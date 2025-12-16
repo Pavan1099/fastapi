@@ -1,46 +1,64 @@
-from fastapi import FastAPI
-from models import Product
+from fastapi import FastAPI, Depends, HTTPException
+from sqlalchemy.orm import Session
+from typing import List
+import models
+from database import engine, get_db
+
+# Create tables if they don't exist
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
 
 @app.get("/")
 def greet():
     return "Hello World, welcome to my project"
 
-products = [
-    Product(id=1, name="Product 1", description="Description 1", price=10.99, quantity=10),
-    Product(id=2, name="Product 2", description="Description 2", price=19.99, quantity=20),
-    Product(id=3, name="Product 3", description="Description 3", price=29.99, quantity=30)
-]
 
-@app.get("/products")
-def get_products():
-    return products
+@app.get("/products", response_model=List[models.Product])
+def get_products(db: Session = Depends(get_db)):
+    return db.query(models.ProductDB).all()
 
-@app.get("/products/{id}")
-def get_product_by_id(id: int):
-    for product in products:
-        if product.id == id:
-            return product
 
-@app.post("/products")
-def add_product(product: Product):
-    products.append(product)
+@app.get("/products/{id}", response_model=models.Product)
+def get_product_by_id(id: int, db: Session = Depends(get_db)):
+    product = db.query(models.ProductDB).filter(models.ProductDB.id == id).first()
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
     return product
 
-@app.put("/products/{id}")
-def update_product(id: int, product: Product):
-    for prod in products:
-        if prod.id == id:
-            prod.name = product.name
-            prod.description = product.description
-            prod.price = product.price
-            prod.quantity = product.quantity
-            return product
 
-@app.delete("/products/{id}")
-def delete_product(id: int):
-    for prod in products:
-        if prod.id == id:
-            products.remove(prod)
-            return prod
+@app.post("/products", response_model=models.Product)
+def add_product(product: models.ProductCreate, db: Session = Depends(get_db)):
+    db_product = models.ProductDB(**product.dict())
+    db.add(db_product)
+    db.commit()
+    db.refresh(db_product)
+    return db_product
+
+
+@app.put("/products/{id}", response_model=models.Product)
+def update_product(
+    id: int, product: models.ProductCreate, db: Session = Depends(get_db)
+):
+    db_product = db.query(models.ProductDB).filter(models.ProductDB.id == id).first()
+    if db_product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    for key, value in product.dict().items():
+        setattr(db_product, key, value)
+
+    db.commit()
+    db.refresh(db_product)
+    return db_product
+
+
+@app.delete("/products/{id}", response_model=models.Product)
+def delete_product(id: int, db: Session = Depends(get_db)):
+    db_product = db.query(models.ProductDB).filter(models.ProductDB.id == id).first()
+    if db_product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    db.delete(db_product)
+    db.commit()
+    return db_product

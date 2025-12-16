@@ -9,11 +9,12 @@ st.set_page_config(
     page_title="Product Manager",
     page_icon="🛍️",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
 # --- Custom CSS ---
-st.markdown("""
+st.markdown(
+    """
 <style>
     /* Global Styles */
     .main {
@@ -25,12 +26,23 @@ st.markdown("""
     }
     
     /* Metrics Styling */
+    /* Metrics Styling */
     div[data-testid="stMetric"] {
         background-color: #ffffff;
         padding: 15px;
         border-radius: 10px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         text-align: center;
+        border: 1px solid #e0e0e0;
+    }
+    
+    /* Force text colors for metrics to match the white background */
+    div[data-testid="stMetric"] label {
+        color: #666666 !important; /* Label Color */
+    }
+    
+    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+        color: #2c3e50 !important; /* Value Color */
     }
     
     /* Product Card Styling */
@@ -61,7 +73,10 @@ st.markdown("""
         font-size: 0.9em;
     }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
+
 
 # --- Helper Functions ---
 def fetch_products():
@@ -76,6 +91,7 @@ def fetch_products():
         st.error(f"Error connecting to backend: {e}")
         return []
 
+
 # --- Sidebar Navigation ---
 st.sidebar.title("🛍️ Navigation")
 st.sidebar.markdown("### My first API project successfully implemented")
@@ -87,24 +103,26 @@ products = fetch_products()
 if page == "Dashboard":
     st.title("📊 Dashboard")
     st.markdown("Overview of your inventory performance.")
-    
+
     if products:
         df = pd.DataFrame(products)
-        
+
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Total Products", len(products))
         with col2:
-            st.metric("Total Stock Value", f"${(df['price'] * df['quantity']).sum():.2f}")
+            st.metric(
+                "Total Stock Value", f"${(df['price'] * df['quantity']).sum():.2f}"
+            )
         with col3:
             st.metric("Avg. Price", f"${df['price'].mean():.2f}")
-            
+
         st.divider()
         st.subheader("Quick Inventory View")
         st.dataframe(
             df[["name", "price", "quantity", "description"]],
             use_container_width=True,
-            hide_index=True
+            hide_index=True,
         )
     else:
         st.info("No products available to generate analytics.")
@@ -113,28 +131,31 @@ if page == "Dashboard":
 elif page == "Product Gallery":
     st.title("🖼️ Product Gallery")
     st.markdown("Browse your product catalog.")
-    
+
     if products:
-        cols = st.columns(3) # Grid layout
+        cols = st.columns(3)  # Grid layout
         for i, product in enumerate(products):
             with cols[i % 3]:
-                st.markdown(f"""
+                st.markdown(
+                    f"""
                 <div class="product-card">
                     <div class="product-title">{product['name']}</div>
                     <p>{product['description']}</p>
                     <div class="product-price">${product['price']:.2f}</div>
                     <div class="product-meta">Stock: {product['quantity']} units</div>
                 </div>
-                """, unsafe_allow_html=True)
+                """,
+                    unsafe_allow_html=True,
+                )
     else:
         st.info("No products found in the gallery.")
 
 # --- Page: Manage Inventory ---
 elif page == "Manage Inventory":
     st.title("🛠️ Manage Inventory")
-    
+
     tab1, tab2, tab3 = st.tabs(["➕ Add Product", "✏️ Update", "🗑️ Delete"])
-    
+
     # Tab 1: Add Product
     with tab1:
         st.header("Add New Item")
@@ -146,15 +167,17 @@ elif page == "Manage Inventory":
             with col2:
                 quantity = st.number_input("Quantity", min_value=0, step=1)
                 description = st.text_input("Short Description")
-            
+
             submitted = st.form_submit_button("Add Product", use_container_width=True)
             if submitted:
                 new_product = {
-                    "id": len(products) + 100 if products else 1, # Improved ID logic needed for real apps
+                    "id": (
+                        len(products) + 100 if products else 1
+                    ),  # Improved ID logic needed for real apps
                     "name": name,
                     "description": description,
                     "price": price,
-                    "quantity": quantity
+                    "quantity": quantity,
                 }
                 res = requests.post(f"{API_URL}/products", json=new_product)
                 if res.status_code == 200:
@@ -171,23 +194,29 @@ elif page == "Manage Inventory":
             product_options = {f"{p['name']} (ID: {p['id']})": p for p in products}
             selected_name = st.selectbox("Select Product", list(product_options.keys()))
             selected_p = product_options[selected_name]
-            
+
             with st.form("update_product_form"):
                 u_name = st.text_input("Name", value=selected_p["name"])
                 u_desc = st.text_area("Description", value=selected_p["description"])
                 c1, c2 = st.columns(2)
-                u_price = c1.number_input("Price", min_value=0.0, format="%.2f", value=selected_p["price"])
-                u_qty = c2.number_input("Quantity", min_value=0, step=1, value=selected_p["quantity"])
-                
+                u_price = c1.number_input(
+                    "Price", min_value=0.0, format="%.2f", value=selected_p["price"]
+                )
+                u_qty = c2.number_input(
+                    "Quantity", min_value=0, step=1, value=selected_p["quantity"]
+                )
+
                 if st.form_submit_button("Save Changes", use_container_width=True):
                     updated_data = {
                         "id": selected_p["id"],
                         "name": u_name,
                         "description": u_desc,
                         "price": u_price,
-                        "quantity": u_qty
+                        "quantity": u_qty,
                     }
-                    res = requests.put(f"{API_URL}/products/{selected_p['id']}", json=updated_data)
+                    res = requests.put(
+                        f"{API_URL}/products/{selected_p['id']}", json=updated_data
+                    )
                     if res.status_code == 200:
                         st.success("Updated successfully!")
                         st.rerun()
@@ -201,10 +230,14 @@ elif page == "Manage Inventory":
         st.header("Remove Item")
         if products:
             del_options = {f"{p['name']} (ID: {p['id']})": p for p in products}
-            del_name = st.selectbox("Select Product to Delete", list(del_options.keys()), key="del_select")
+            del_name = st.selectbox(
+                "Select Product to Delete", list(del_options.keys()), key="del_select"
+            )
             del_p = del_options[del_name]
-            
-            st.warning(f"Are you sure you want to delete **{del_p['name']}**? This action cannot be undone.")
+
+            st.warning(
+                f"Are you sure you want to delete **{del_p['name']}**? This action cannot be undone."
+            )
             if st.button("🗑️ Delete Permanently", type="primary"):
                 res = requests.delete(f"{API_URL}/products/{del_p['id']}")
                 if res.status_code == 200:
@@ -218,10 +251,12 @@ elif page == "Manage Inventory":
 # --- Footer ---
 st.divider()
 with st.expander("🔧 Technologies Used"):
-    st.markdown("""
+    st.markdown(
+        """
     *   **Frontend**: [Streamlit](https://streamlit.io/) 🎈
     *   **Backend**: [FastAPI](https://fastapi.tiangolo.com/) ⚡
     *   **Data Handling**: [Pandas](https://pandas.pydata.org/) 🐼
     *   **API Communication**: [Requests](https://requests.readthedocs.io/) 🔌
     *   **Language**: [Python](https://www.python.org/) 🐍
-    """)
+    """
+    )
